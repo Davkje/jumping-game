@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 
 // GAME STATES
 const gameRunning = ref(false);
-const gameOver = ref(false);
+const gameOver = ref(true);
 
 // JUMP
 const isJumping = ref(false);
@@ -36,6 +36,11 @@ const generateObstacles = () => {
 	const maxInterval = 3000; // Maximum interval time (3 seconds)
 
 	const createObstacle = () => {
+		if (gameOver.value) {
+			obstacleGenerationActive = false; // Stop generating obstacles if the game is over
+			return;
+		}
+
 		const newObstacle = {
 			left: gameWidth.value, // Use dynamic game width to position obstacles
 			bottom: 0,
@@ -50,10 +55,12 @@ const generateObstacles = () => {
 	createObstacle(); // Start generating the first obstacle
 };
 
-// Move obstacles towards the dino
-const moveObstacles = () => {
-	obstacles.value.forEach((obstacle: any) => {
-		obstacle.left -= obstacleSpeed;
+const moveObstacles = (deltaTime: number) => {
+	if (gameOver.value) return; // Hindra rörelse vid Game Over
+
+	obstacles.value = obstacles.value.filter((obstacle: any) => {
+		obstacle.left -= (obstacleSpeed * deltaTime) / 16.67;
+		return obstacle.left >= -obstacleWidth; // Behåll bara hinder som fortfarande är på skärmen
 	});
 };
 
@@ -71,35 +78,52 @@ const checkCollisions = () => {
 	});
 };
 
+// Game loop with requestAnimationFrame
+let lastTime = 0;
+const gameLoop = (timestamp: number) => {
+	if (gameOver.value) {
+		gameRunning.value = false;
+		obstacleGenerationActive = false; // Reset flag for obstacle generation
+		console.log(`gameOver: ${gameOver.value}`);
+		return; // Stop the game loop if the game is over
+	}
+
+	// Calculate deltaTime to adjust for different frame rates
+	const deltaTime = timestamp - lastTime;
+	lastTime = timestamp;
+
+	moveObstacles(deltaTime);
+	checkCollisions();
+	requestAnimationFrame(gameLoop); // Recursively call the game loop for smooth animation
+};
+
 // Start game logic
 const startGame = (): void => {
-	gameOver.value = false;
-	position.value = 0;
 	obstacles.value = []; // Clear obstacles
+	gameOver.value = false;
+	console.log(`gameOver: ${gameOver.value}`);
+	position.value = 0;
 	obstacleGenerationActive = false; // Reset flag for obstacle generation
-	if (obstacleInterval) {
-		clearInterval(obstacleInterval); // Clear existing interval if any
-	}
-	generateObstacles(); // Start generating obstacles
-	gameRunning.value = true; // Set gameRunning to true when the game starts
 
-	// Game loop
-	const gameLoop = setInterval(() => {
-		if (gameOver.value) {
-			clearInterval(gameLoop); // Stop game loop when game is over
-			gameRunning.value = false; // Set gameRunning to false when the game is over
-		}
-		moveObstacles();
-		checkCollisions();
-	}, 20); // Run every 20ms
+	// Clear any existing obstacle generation intervals
+	if (obstacleInterval) {
+		clearTimeout(obstacleInterval); // Stop any ongoing obstacle generation
+		obstacleInterval = null;
+	}
+
+	// Start generating obstacles
+	generateObstacles();
+	gameRunning.value = true; // Set gameRunning to true when the game starts
+	requestAnimationFrame(gameLoop); // Start the game loop with requestAnimationFrame
 };
 
 // KEYS
 const handleKeyDown = (event: KeyboardEvent) => {
-	console.log("Key pressed:", event.code);
 	if (event.repeat) return;
 	if (event.code === "Space") jump();
 };
+
+
 
 // JUMP
 const jump = () => {
@@ -149,13 +173,12 @@ onUnmounted(() => {
 
 <style scoped>
 .game-container {
-	width: 98vw;
-	height: 200px;
+	width: 95vw;
+	height: 250px;
 	background-color: lightgray;
-	border: solid red 2px;
 	position: relative;
 	overflow: hidden;
-	border-bottom: 2px solid black;
+	border-bottom: 8px solid black;
 }
 
 .dino {
@@ -171,10 +194,11 @@ onUnmounted(() => {
 .obstacle {
 	width: 25px;
 	height: 30px;
-	background-color: red;
+	background-color: black;
 	position: absolute;
 	bottom: 0;
-	border-radius: 5px;
+	border-top-right-radius: 5px;
+  border-top-left-radius: 5px;
 }
 
 .start-button {
