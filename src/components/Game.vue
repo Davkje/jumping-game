@@ -1,113 +1,156 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 
+// GAME STATES
+const isPaused = ref(false);
+const gameOver = ref(false);
+
 // JUMP
 const isJumping = ref(false);
 const position = ref(0);
 const gravity = 4;
 const jumpHeight = 120;
 const jumpSpeed = 15;
+
 // OBSTACLES
 const obstacles = ref<{ left: number }[]>([]);
-const obstacleSpeed = 8;
-const gameOver = ref(false);
+const obstacleSpeed = 4;
 
-const jump = () => {
-  if (isPaused.value || isJumping.value) return; // Pausa hoppet om spelet är pausat
-  isJumping.value = true;
+let obstacleInterval: ReturnType<typeof setInterval> | null = null;
 
-  let jumpInterval = setInterval(() => {
-    if (position.value < jumpHeight) {
-      position.value += jumpSpeed;
-    } else {
-      clearInterval(jumpInterval);
-      let fallInterval = setInterval(() => {
-        if (position.value > 0) {
-          position.value -= gravity;
-        } else {
-          clearInterval(fallInterval);
-          isJumping.value = false;
-        }
-      }, 20);
-    }
-  }, 20);
-};
-
+// Lyssnar på tangentbordet
 const handleKeyDown = (event: KeyboardEvent) => {
+	console.log("Tangent nedtryckt:", event.code); // ✅ Kolla om "P" registreras i konsolen
 	if (event.repeat) return;
 	if (event.code === "Space") jump();
+	if (event.code === "KeyP") togglePause(); // Tryck "P" för att pausa
+};
+
+// JUMP
+const jump = () => {
+	if (isPaused.value || gameOver.value || isJumping.value) return; // Hoppa inte om spelet är pausat
+	isJumping.value = true;
+
+	let jumpInterval = setInterval(() => {
+		if (isPaused.value) {
+			clearInterval(jumpInterval);
+			return;
+		}
+
+		if (position.value < jumpHeight) {
+			position.value += jumpSpeed;
+		} else {
+			clearInterval(jumpInterval);
+			let fallInterval = setInterval(() => {
+				if (isPaused.value) {
+					clearInterval(fallInterval);
+					return;
+				}
+
+				if (position.value > 0) {
+					position.value -= gravity;
+				} else {
+					clearInterval(fallInterval);
+					isJumping.value = false;
+				}
+			}, 20);
+		}
+	}, 20);
+};
+
+// Funktion för att växla pausläge
+const togglePause = () => {
+	isPaused.value = !isPaused.value;
+	console.log("Paus status:", isPaused.value);
+
+	if (isPaused.value) {
+		clearInterval(obstacleInterval!); // Pausa hindren
+	} else {
+		moveObstacles(); // Starta om hindren
+		if (isJumping.value) resumeJump(); // Fortsätt hoppet om det pausades
+	}
+};
+
+const resumeJump = () => {
+	let fallInterval = setInterval(() => {
+		if (isPaused.value) {
+			clearInterval(fallInterval);
+			return;
+		}
+
+		if (position.value > 0) {
+			position.value -= gravity;
+		} else {
+			clearInterval(fallInterval);
+			isJumping.value = false;
+		}
+	}, 20);
 };
 
 const createObstacle = () => {
 	obstacles.value.push({ left: window.innerWidth });
 };
+let lastTimestamp = 0; // En enda variabel för att lagra senaste tidsstämpeln
 
-// --- MOVE OBSTACLES ---
-const moveObstacles = () => {
-  if (isPaused.value) return; // Pausar spelet om isPaused är true
+const moveObstacles = (timestamp?: number) => {
+	if (isPaused.value || gameOver.value) {
+		// Om spelet är pausat, spara senaste tidsstämpeln men gör inget mer
+		lastTimestamp = timestamp || lastTimestamp;
+		return;
+	}
 
-  obstacleInterval = setInterval(() => {
-    if (gameOver.value) {
-      clearInterval(obstacleInterval!);
-      return;
-    }
+	// Beräkna tidsdifferensen sedan senaste anrop
+	const deltaTime = timestamp - lastTimestamp;
+	lastTimestamp = timestamp; // Uppdatera senaste tidsstämpeln
 
-    obstacles.value.forEach((obstacle, index) => {
-      obstacle.left -= obstacleSpeed;
+	// Uppdatera hinderpositionen baserat på tidsdifferensen
+	obstacles.value.forEach((obstacle, index) => {
+		obstacle.left -= (obstacleSpeed * deltaTime) / 16; // Gör rörelsen jämn
 
-      if (obstacle.left < -50) {
-        obstacles.value.splice(index, 1);
-      }
+		if (obstacle.left < -50) {
+			obstacles.value.splice(index, 1); // Ta bort hinder som har passerat
+		}
 
-      if (
-        obstacle.left + 20 > 50 &&
-        obstacle.left < 50 + 40 &&
-        position.value < 30
-      ) {
-        gameOver.value = true;
-        isPaused.value = true; // Pausa spelet när kollisionen sker
-      }
-    });
-  }, 50);
+		// Kolla om dino kraschar i hindret
+		if (obstacle.left + 20 > 50 && obstacle.left < 50 + 40 && position.value < 30) {
+			gameOver.value = true;
+		}
+	});
+
+	// Anropa nästa frame
+	requestAnimationFrame(moveObstacles);
 };
 
+// --- RESTART GAME ---
+const restartGame = () => {
+	position.value = 0;
+	obstacles.value = [];
 
-const isPaused = ref(false); // Ny status för paus
-let obstacleInterval: ReturnType<typeof setInterval> | null = null;
+	gameOver.value = false;
+	isPaused.value = false;
+	isJumping.value = false;
+	console.log("Paus status:", isPaused.value);
+
+	requestAnimationFrame(moveObstacles); // 🏃 Starta smooth hinder
+};
 
 onMounted(() => {
 	window.addEventListener("keydown", handleKeyDown);
 	setInterval(createObstacle, 2000);
-	moveObstacles();
+	requestAnimationFrame(moveObstacles); // Starta smooth rörelse
 });
 
 onUnmounted(() => {
 	window.removeEventListener("keydown", handleKeyDown);
 });
-
-// --- RESTART GAME ---
-const restartGame = () => {
-  // Återställ dinosauriens position
-  position.value = 0; // Tillbaka till botten
-
-  // Återställ hinder
-  obstacles.value = [];
-
-  // Återställ spelets status
-  gameOver.value = false;
-  isPaused.value = false; // Spela vidare när man startar om
-
-  // Starta om hindermovementen
-  moveObstacles(); // Eller ett annat sätt att starta om hindermovementen
-};
-
 </script>
 
 <template>
 	<div class="game-container">
-		<div class="dino" :style="{ bottom: position + 'px' }">Dino</div>
+		<div class="dino" :style="{ bottom: position + 'px' }"></div>
 		<div v-for="(obstacle, index) in obstacles" :key="index" class="obstacle" :style="{ left: obstacle.left + 'px' }"></div>
-    <button v-if="gameOver" @click="restartGame" class="restart-button">Starta om</button>
+		<button v-if="gameOver" @click="restartGame" class="restart-button">Starta om</button>
+		<button class="pause-button" @click="togglePause">P</button>
 	</div>
 </template>
 
@@ -141,21 +184,37 @@ const restartGame = () => {
 }
 
 .restart-button {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 10px 20px;
-  background-color: #4caf50;
-  color: white;
-  font-size: 18px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 10px 20px;
+	background-color: #4caf50;
+	color: white;
+	font-size: 18px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
 }
 
 .restart-button:hover {
-  background-color: #45a049;
+	background-color: #45a049;
 }
 
+.pause-button {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	padding: 10px 15px;
+	background-color: #ffcc00;
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: bold;
+	border-radius: 5px;
+}
+
+.pause-button:hover {
+	background-color: #ffdb4d;
+}
 </style>
