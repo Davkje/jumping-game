@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-
 // GAME STATES
-const isPaused = ref(false);
 const gameOver = ref(false);
 
 // JUMP
@@ -15,38 +13,27 @@ const jumpSpeed = 15;
 // OBSTACLES
 const obstacles = ref<{ left: number }[]>([]);
 const obstacleSpeed = 4;
-
-let obstacleInterval: ReturnType<typeof setInterval> | null = null;
+let obstacleInterval: ReturnType<typeof setInterval> | null = null; // För hinderintervall
+let animationFrameId: number | null = null; // För att lagra ID för requestAnimationFrame
 
 // Lyssnar på tangentbordet
 const handleKeyDown = (event: KeyboardEvent) => {
-	console.log("Tangent nedtryckt:", event.code); // ✅ Kolla om "P" registreras i konsolen
+	console.log("Tangent nedtryckt:", event.code);
 	if (event.repeat) return;
 	if (event.code === "Space") jump();
-	if (event.code === "KeyP") togglePause(); // Tryck "P" för att pausa
 };
 
 // JUMP
 const jump = () => {
-	if (isPaused.value || gameOver.value || isJumping.value) return; // Hoppa inte om spelet är pausat
+	if (gameOver.value || isJumping.value) return; // Hoppa inte om spelet är över
 	isJumping.value = true;
 
 	let jumpInterval = setInterval(() => {
-		if (isPaused.value) {
-			clearInterval(jumpInterval);
-			return;
-		}
-
 		if (position.value < jumpHeight) {
 			position.value += jumpSpeed;
 		} else {
 			clearInterval(jumpInterval);
 			let fallInterval = setInterval(() => {
-				if (isPaused.value) {
-					clearInterval(fallInterval);
-					return;
-				}
-
 				if (position.value > 0) {
 					position.value -= gravity;
 				} else {
@@ -58,46 +45,19 @@ const jump = () => {
 	}, 20);
 };
 
-// Funktion för att växla pausläge
-const togglePause = () => {
-	isPaused.value = !isPaused.value;
-	console.log("Paus status:", isPaused.value);
-
-	if (isPaused.value) {
-		clearInterval(obstacleInterval!); // Pausa hindren
-	} else {
-		moveObstacles(); // Starta om hindren
-		if (isJumping.value) resumeJump(); // Fortsätt hoppet om det pausades
+// Skapa hinder
+const createObstacle = () => {
+	if (!gameOver.value) {
+		// Hindren ska inte skapas om spelet är över
+		obstacles.value.push({ left: window.innerWidth });
 	}
 };
 
-const resumeJump = () => {
-	let fallInterval = setInterval(() => {
-		if (isPaused.value) {
-			clearInterval(fallInterval);
-			return;
-		}
-
-		if (position.value > 0) {
-			position.value -= gravity;
-		} else {
-			clearInterval(fallInterval);
-			isJumping.value = false;
-		}
-	}, 20);
-};
-
-const createObstacle = () => {
-	obstacles.value.push({ left: window.innerWidth });
-};
+// Flytta hinder
 let lastTimestamp = 0; // En enda variabel för att lagra senaste tidsstämpeln
 
 const moveObstacles = (timestamp?: number) => {
-	if (isPaused.value || gameOver.value) {
-		// Om spelet är pausat, spara senaste tidsstämpeln men gör inget mer
-		lastTimestamp = timestamp || lastTimestamp;
-		return;
-	}
+	if (gameOver.value) return; // Stanna hinder-rörelsen om spelet är över
 
 	// Beräkna tidsdifferensen sedan senaste anrop
 	const deltaTime = timestamp - lastTimestamp;
@@ -117,31 +77,40 @@ const moveObstacles = (timestamp?: number) => {
 		}
 	});
 
-	// Anropa nästa frame
-	requestAnimationFrame(moveObstacles);
+	// Anropa nästa frame för att fortsätta rörelsen
+	animationFrameId = requestAnimationFrame(moveObstacles);
 };
 
-// --- RESTART GAME ---
-const restartGame = () => {
+// Starta spelet
+const startGame = () => {
+	gameOver.value = false;
 	position.value = 0;
 	obstacles.value = [];
-
-	gameOver.value = false;
-	isPaused.value = false;
-	isJumping.value = false;
-	console.log("Paus status:", isPaused.value);
-
-	requestAnimationFrame(moveObstacles); // 🏃 Starta smooth hinder
+	lastTimestamp = 0; // Reset lastTimestamp when the game starts
+	// Starta hinder interval
+	obstacleInterval = setInterval(createObstacle, 2000);
+	// Starta animation för att flytta hindren
+	animationFrameId = requestAnimationFrame(moveObstacles);
 };
 
+// Starta om spelet
+const restartGame = () => {
+	// Stoppa nuvarande intervall och animation och starta spelet på nytt
+	if (obstacleInterval) clearInterval(obstacleInterval);
+	if (animationFrameId) cancelAnimationFrame(animationFrameId);
+	startGame();
+};
+
+// Initialiseras när sidan är laddad
 onMounted(() => {
 	window.addEventListener("keydown", handleKeyDown);
-	setInterval(createObstacle, 2000);
-	requestAnimationFrame(moveObstacles); // Starta smooth rörelse
 });
 
+// Ta bort event listeners när komponenten tas bort
 onUnmounted(() => {
 	window.removeEventListener("keydown", handleKeyDown);
+	if (obstacleInterval) clearInterval(obstacleInterval);
+	if (animationFrameId) cancelAnimationFrame(animationFrameId);
 });
 </script>
 
@@ -149,8 +118,10 @@ onUnmounted(() => {
 	<div class="game-container">
 		<div class="dino" :style="{ bottom: position + 'px' }"></div>
 		<div v-for="(obstacle, index) in obstacles" :key="index" class="obstacle" :style="{ left: obstacle.left + 'px' }"></div>
+		<!-- Starta om knappen och spela-knapp -->
 		<button v-if="gameOver" @click="restartGame" class="restart-button">Starta om</button>
-		<button class="pause-button" @click="togglePause">P</button>
+		<!-- Starta spelet (syns bara om spelet inte är igång) -->
+		<button v-if="!gameOver && obstacles.length === 0" @click="startGame" class="start-button">Starta spelet</button>
 	</div>
 </template>
 
@@ -183,7 +154,8 @@ onUnmounted(() => {
 	border-radius: 5px;
 }
 
-.restart-button {
+.restart-button,
+.start-button {
 	position: absolute;
 	top: 50%;
 	left: 50%;
@@ -197,24 +169,8 @@ onUnmounted(() => {
 	cursor: pointer;
 }
 
-.restart-button:hover {
+.restart-button:hover,
+.start-button:hover {
 	background-color: #45a049;
-}
-
-.pause-button {
-	position: absolute;
-	top: 10px;
-	right: 10px;
-	padding: 10px 15px;
-	background-color: #ffcc00;
-	border: none;
-	cursor: pointer;
-	font-size: 16px;
-	font-weight: bold;
-	border-radius: 5px;
-}
-
-.pause-button:hover {
-	background-color: #ffdb4d;
 }
 </style>
