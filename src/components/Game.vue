@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+
 // GAME STATES
+const gameRunning = ref(false);
 const gameOver = ref(false);
 
 // JUMP
@@ -10,15 +12,91 @@ const gravity = 4;
 const jumpHeight = 120;
 const jumpSpeed = 15;
 
-// OBSTACLES
-const obstacles = ref<{ left: number }[]>([]);
-const obstacleSpeed = 4;
-let obstacleInterval: ReturnType<typeof setInterval> | null = null; // För hinderintervall
-let animationFrameId: number | null = null; // För att lagra ID för requestAnimationFrame
+// GAME WIDTH
+const gameWidth = ref(window.innerWidth); // Set initial game width to window width
+// Update gameWidth on window resize
+const handleResize = () => {
+	gameWidth.value = window.innerWidth;
+};
 
-// Lyssnar på tangentbordet
+// OBSTACLES
+let obstacleInterval: ReturnType<typeof setInterval> | null = null; // Store the interval for obstacle generation
+const obstacleSpeed = 4;
+let obstacleGenerationActive = false; // Flag to control obstacle generation
+
+const obstacles = ref([]);
+const obstacleWidth = 25;
+const obstacleHeight = 30;
+
+const generateObstacles = () => {
+	if (obstacleGenerationActive) return; // Prevent generating if it's already active
+	obstacleGenerationActive = true;
+
+	const minInterval = 1500; // Minimum interval time (1.5 seconds)
+	const maxInterval = 3000; // Maximum interval time (3 seconds)
+
+	const createObstacle = () => {
+		const newObstacle = {
+			left: gameWidth.value, // Use dynamic game width to position obstacles
+			bottom: 0,
+		};
+		obstacles.value.push(newObstacle);
+
+		// Set a random interval for the next obstacle generation
+		const nextInterval = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
+		obstacleInterval = setTimeout(createObstacle, nextInterval); // Create next obstacle after a random time
+	};
+
+	createObstacle(); // Start generating the first obstacle
+};
+
+// Move obstacles towards the dino
+const moveObstacles = () => {
+	obstacles.value.forEach((obstacle: any) => {
+		obstacle.left -= obstacleSpeed;
+	});
+};
+
+// Check for collisions
+const checkCollisions = () => {
+	obstacles.value.forEach((obstacle: any) => {
+		if (
+			obstacle.left < 50 + 40 && // Dino's right side
+			obstacle.left + obstacleWidth > 50 && // Dino's left side
+			obstacle.bottom < position.value + 40 && // Dino's top side
+			obstacle.bottom + obstacleHeight > position.value // Dino's bottom side
+		) {
+			gameOver.value = true; // Game over if collision happens
+		}
+	});
+};
+
+// Start game logic
+const startGame = (): void => {
+	gameOver.value = false;
+	position.value = 0;
+	obstacles.value = []; // Clear obstacles
+	obstacleGenerationActive = false; // Reset flag for obstacle generation
+	if (obstacleInterval) {
+		clearInterval(obstacleInterval); // Clear existing interval if any
+	}
+	generateObstacles(); // Start generating obstacles
+	gameRunning.value = true; // Set gameRunning to true when the game starts
+
+	// Game loop
+	const gameLoop = setInterval(() => {
+		if (gameOver.value) {
+			clearInterval(gameLoop); // Stop game loop when game is over
+			gameRunning.value = false; // Set gameRunning to false when the game is over
+		}
+		moveObstacles();
+		checkCollisions();
+	}, 20); // Run every 20ms
+};
+
+// KEYS
 const handleKeyDown = (event: KeyboardEvent) => {
-	console.log("Tangent nedtryckt:", event.code);
+	console.log("Key pressed:", event.code);
 	if (event.repeat) return;
 	if (event.code === "Space") jump();
 };
@@ -45,91 +123,36 @@ const jump = () => {
 	}, 20);
 };
 
-// Skapa hinder
-const createObstacle = () => {
-	if (!gameOver.value) {
-		// Hindren ska inte skapas om spelet är över
-		obstacles.value.push({ left: window.innerWidth });
-	}
-};
-
-// Flytta hinder
-let lastTimestamp = 0; // En enda variabel för att lagra senaste tidsstämpeln
-
-const moveObstacles = (timestamp?: number) => {
-	if (gameOver.value) return; // Stanna hinder-rörelsen om spelet är över
-
-	// Beräkna tidsdifferensen sedan senaste anrop
-	const deltaTime = timestamp - lastTimestamp;
-	lastTimestamp = timestamp; // Uppdatera senaste tidsstämpeln
-
-	// Uppdatera hinderpositionen baserat på tidsdifferensen
-	obstacles.value.forEach((obstacle, index) => {
-		obstacle.left -= (obstacleSpeed * deltaTime) / 16; // Gör rörelsen jämn
-
-		if (obstacle.left < -50) {
-			obstacles.value.splice(index, 1); // Ta bort hinder som har passerat
-		}
-
-		// Kolla om dino kraschar i hindret
-		if (obstacle.left + 20 > 50 && obstacle.left < 50 + 40 && position.value < 30) {
-			gameOver.value = true;
-		}
-	});
-
-	// Anropa nästa frame för att fortsätta rörelsen
-	animationFrameId = requestAnimationFrame(moveObstacles);
-};
-
-// Starta spelet
-const startGame = () => {
-	gameOver.value = false;
-	position.value = 0;
-	obstacles.value = [];
-	lastTimestamp = 0; // Reset lastTimestamp when the game starts
-	// Starta hinder interval
-	obstacleInterval = setInterval(createObstacle, 2000);
-	// Starta animation för att flytta hindren
-	animationFrameId = requestAnimationFrame(moveObstacles);
-};
-
-// Starta om spelet
-const restartGame = () => {
-	// Stoppa nuvarande intervall och animation och starta spelet på nytt
-	if (obstacleInterval) clearInterval(obstacleInterval);
-	if (animationFrameId) cancelAnimationFrame(animationFrameId);
-	startGame();
-};
-
 // Initialiseras när sidan är laddad
 onMounted(() => {
 	window.addEventListener("keydown", handleKeyDown);
+	window.addEventListener("resize", handleResize); // Add event listener on mount
 });
 
 // Ta bort event listeners när komponenten tas bort
 onUnmounted(() => {
 	window.removeEventListener("keydown", handleKeyDown);
-	if (obstacleInterval) clearInterval(obstacleInterval);
-	if (animationFrameId) cancelAnimationFrame(animationFrameId);
+	window.removeEventListener("resize", handleResize); // Remove event listener on unmount
 });
 </script>
 
 <template>
 	<div class="game-container">
 		<div class="dino" :style="{ bottom: position + 'px' }"></div>
-		<div v-for="(obstacle, index) in obstacles" :key="index" class="obstacle" :style="{ left: obstacle.left + 'px' }"></div>
-		<!-- Starta om knappen och spela-knapp -->
-		<button v-if="gameOver" @click="restartGame" class="restart-button">Starta om</button>
-		<!-- Starta spelet (syns bara om spelet inte är igång) -->
-		<button v-if="!gameOver && obstacles.length === 0" @click="startGame" class="start-button">Starta spelet</button>
+
+		<div v-for="(obstacle, index) in obstacles" :key="index" class="obstacle" :style="{ left: obstacle.left + 'px', bottom: obstacle.bottom + 'px' }"></div>
+
+		<button v-if="!gameRunning && !gameOver" @click="startGame" class="start-button">Starta spelet</button>
+		<button v-if="gameOver" @click="startGame" class="start-button">Starta om spelet</button>
 	</div>
 </template>
 
 <style scoped>
 .game-container {
-	width: 100vw;
+	width: 98vw;
 	height: 200px;
 	background-color: lightgray;
+	border: solid red 2px;
 	position: relative;
 	overflow: hidden;
 	border-bottom: 2px solid black;
@@ -154,7 +177,6 @@ onUnmounted(() => {
 	border-radius: 5px;
 }
 
-.restart-button,
 .start-button {
 	position: absolute;
 	top: 50%;
