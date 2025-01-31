@@ -45,7 +45,13 @@ let obstacleInterval: ReturnType<typeof setInterval> | null = null; // Store the
 const obstacleSpeed = 4;
 let obstacleGenerationActive = false; // Flag to control obstacle generation
 
-const obstacles = ref([]);
+type Obstacle = {
+	left: number;
+	bottom: number;
+	scored?: boolean; // valfri, om du vill markera om hindret har gett poäng
+};
+
+const obstacles = ref<Obstacle[]>([]);
 
 const generateObstacles = () => {
 	if (obstacleGenerationActive) return; // Prevent generating if it's already active
@@ -201,7 +207,6 @@ onUnmounted(() => {
 	window.removeEventListener("resize", handleResize);
 	window.removeEventListener("touchstart", handleTouch); // Ta bort touchlyssnare
 });
-
 </script>
 
 <template>
