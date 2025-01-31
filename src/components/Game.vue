@@ -7,16 +7,35 @@ const gameRunning = ref(false);
 const gameOver = ref(true);
 const score = ref(0);
 
+const dinoWidth = 68;
+const dinoHeight = 68;
+
+const obstacleWidth = 42;
+const obstacleHeight = 52;
+
 // JUMP
 const isJumping = ref(false);
 const position = ref(0);
 const gravity = 6;
-const jumpHeight = 120;
-const jumpSpeed = 15;
+const jumpHeight = 220;
+const jumpSpeed = 25;
 
 // GAME WIDTH
+const gameContainer = ref<HTMLElement | null>(null); // ref to hold the DOM element
+let backgroundX = 0;
+const backgroundSpeed = 2; // Pixlar per frame
+
+const moveBackground = () => {
+	if (!gameRunning.value || !gameContainer.value) return; // Kolla att elementet finns
+
+	backgroundX -= backgroundSpeed;
+	gameContainer.value.style.backgroundPosition = `${backgroundX}px 0`;
+
+	requestAnimationFrame(moveBackground);
+};
+
 const gameWidth = ref(window.innerWidth); // Set initial game width to window width
-// Update gameWidth on window resize
+// Uppdatera `gameWidth` vid resize
 const handleResize = () => {
 	gameWidth.value = window.innerWidth;
 };
@@ -27,8 +46,6 @@ const obstacleSpeed = 4;
 let obstacleGenerationActive = false; // Flag to control obstacle generation
 
 const obstacles = ref([]);
-const obstacleWidth = 25;
-const obstacleHeight = 30;
 
 const generateObstacles = () => {
 	if (obstacleGenerationActive) return; // Prevent generating if it's already active
@@ -61,30 +78,34 @@ const generateObstacles = () => {
 const moveObstacles = (deltaTime: number) => {
 	if (gameOver.value) return; // Stop obstacles if game is over
 
+	const dinoX = gameWidth.value / 2 - dinoWidth / 2; // Hämta aktuellt X-värde för dinon
+
 	obstacles.value = obstacles.value.filter((obstacle) => {
 		obstacle.left -= (obstacleSpeed * deltaTime) / 16.67;
 
-		// Only give a score once when the obstacle fully passes the dino
-		if (!obstacle.scored && obstacle.left + obstacleWidth <= 50) {
+		// Ge poäng när hindret har passerat helt och dinon har hoppat över det
+		if (!obstacle.scored && obstacle.left + obstacleWidth <= dinoX && position.value > 50) {
 			score.value++;
-			obstacle.scored = true; // Mark as scored so it doesn’t count again
+			obstacle.scored = true; // Markera som räknat så vi inte får dubbla poäng
 		}
 
-		// Keep only obstacles that are still on the screen
+		// Behåll bara hinder som fortfarande syns på skärmen
 		return obstacle.left >= -obstacleWidth;
 	});
 };
 
 // Check for collisions
 const checkCollisions = () => {
+	const dinoX = gameWidth.value / 2 - dinoWidth / 2; // Beräkna dinoX varje gång
+
 	obstacles.value.forEach((obstacle: any) => {
 		if (
-			obstacle.left < 50 + 40 && // Dino's right side
-			obstacle.left + obstacleWidth > 50 && // Dino's left side
-			obstacle.bottom < position.value + 40 && // Dino's top side
+			obstacle.left < dinoX + dinoWidth && // Dino's right side
+			obstacle.left + obstacleWidth > dinoX && // Dino's left side
+			obstacle.bottom < position.value + dinoHeight && // Dino's top side
 			obstacle.bottom + obstacleHeight > position.value // Dino's bottom side
 		) {
-			gameOver.value = true; // Game over if collision happens
+			gameOver.value = true;
 		}
 	});
 };
@@ -110,6 +131,8 @@ const gameLoop = (timestamp: number) => {
 
 // Start game logic
 const startGame = (): void => {
+	backgroundX = 0; // Återställ position
+	requestAnimationFrame(moveBackground);
 	obstacles.value = []; // Clear obstacles
 	gameOver.value = false;
 	gameStart.value = false;
@@ -136,13 +159,10 @@ const handleKeyDown = (event: KeyboardEvent) => {
 	if (event.code === "Space") jump();
 };
 
-const rotation = ref(0); // Track rotation angle
 // JUMP
 const jump = () => {
 	if (gameOver.value || isJumping.value) return; // Prevent jumping if game is over
 	isJumping.value = true;
-
-	rotation.value += 90; // Increase rotation angle by 90° each jump
 
 	let jumpInterval = setInterval(() => {
 		if (position.value < jumpHeight) {
@@ -152,6 +172,9 @@ const jump = () => {
 			let fallInterval = setInterval(() => {
 				if (position.value > 0) {
 					position.value -= gravity;
+					if (position.value < 0) {
+						position.value = 0; // Se till att den aldrig går under marken!
+					}
 				} else {
 					clearInterval(fallInterval);
 					isJumping.value = false;
@@ -161,76 +184,96 @@ const jump = () => {
 	}, 20);
 };
 
+const handleTouch = () => {
+	jump();
+};
+
 // Initialiseras när sidan är laddad
 onMounted(() => {
 	window.addEventListener("keydown", handleKeyDown);
-	window.addEventListener("resize", handleResize); // Add event listener on mount
+	window.addEventListener("resize", handleResize);
+	window.addEventListener("touchstart", handleTouch); // Lägg till touchlyssnare
 });
 
 // Ta bort event listeners när komponenten tas bort
 onUnmounted(() => {
 	window.removeEventListener("keydown", handleKeyDown);
-	window.removeEventListener("resize", handleResize); // Remove event listener on unmount
+	window.removeEventListener("resize", handleResize);
+	window.removeEventListener("touchstart", handleTouch); // Ta bort touchlyssnare
 });
+
 </script>
 
 <template>
-	<div v-if="!gameStart" class="score">Score: {{ score }}</div>
-
 	<h1 v-if="gameStart">Welcome</h1>
 	<h1 v-if="gameOver && !gameStart">Game Over</h1>
 
-	<div class="game-container">
-		<div class="dino" :style="{ bottom: position + 'px', transform: 'rotate(' + rotation + 'deg)' }"></div>
+	<div class="game-container" ref="gameContainer">
+		<div class="dino" :class="{ jumping: isJumping, dead: gameOver && !gameStart }" :style="{ bottom: position + 'px' }"></div>
 
 		<div v-for="(obstacle, index) in obstacles" :key="index" class="obstacle" :style="{ left: obstacle.left + 'px', bottom: obstacle.bottom + 'px' }"></div>
 	</div>
 
 	<button v-if="gameStart" @click="startGame" class="start-button">Play</button>
 	<button v-if="gameOver && !gameStart" @click="startGame" class="restart-button">Play Again</button>
+	<div v-if="!gameStart" class="score">Score: {{ score }}</div>
 </template>
 
 <style scoped>
 .game-container {
-	width: 95vw;
-	height: 250px;
-	background-color: lightgray;
+	width: 98vw;
+	height: 400px;
+	background-image: url("./src/assets/images/bg.png");
+	background-size: auto 100%; /* Låser höjden men låter bredden flöda */
+	background-repeat: repeat-x;
 	position: relative;
-	border-top-right-radius: 10px;
-	border-top-left-radius: 10px;
 	overflow: hidden;
-	border-bottom: 8px solid #292929;
+	border-radius: 10px;
 }
 
 .dino {
-	width: 40px;
-	height: 40px;
-	background-image: linear-gradient(rgb(80, 97, 175), rgb(86, 121, 234));
+	width: 68px;
+	height: 68px;
+	background-image: url(/src/assets/images/dino_walk.gif);
+	background-size: cover; /* Ensures the entire image fits inside */
+	background-repeat: no-repeat; /* Prevents tiling */
+	background-position: center; /* Centers the image */
 	position: absolute;
 	bottom: 0;
-	left: 50px;
+	left: calc(50% - 34px); /* 50% av skärmen minus halva bredden (68px / 2) */
 	border-radius: 5px;
 	transition: transform 0.5s ease-out;
 }
 
+.dino.jumping {
+	background-image: url(/src/assets/images/dino_jump.gif);
+}
+.dino.dead {
+	background-image: url(/src/assets/images/dino_dead.png);
+}
+
 .obstacle {
-	width: 25px;
-	height: 30px;
-	background-color: #292929;
+	width: 42px;
+	height: 52px;
+	background-image: url(/src/assets/images/obstacle.png);
+	background-size: 100%; /* Ensures the entire image fits inside */
+	background-repeat: no-repeat; /* Prevents tiling */
+	background-position: bottom; /* Centers the image */
 	position: absolute;
 	bottom: 0;
-	border-top-right-radius: 5px;
-	border-top-left-radius: 5px;
+	/* border-top-right-radius: 5px;
+	border-top-left-radius: 5px; */
+	/* border: solid red; */
 }
 
 .start-button {
 	position: absolute;
-	bottom: 15%;
+	bottom: 10%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 10px 20px;
-	background-color: rgb(80, 97, 175);
-	color: white;
+	background-color: rgb(212, 212, 212);
+	color: black;
 	font-size: 18px;
 	border: none;
 	border-radius: 5px;
@@ -239,12 +282,12 @@ onUnmounted(() => {
 
 .restart-button {
 	position: absolute;
-	bottom: 15%;
+	bottom: 10%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 10px 20px;
-	background-color: rgb(80, 97, 175);
-	color: white;
+	background-color: rgb(212, 212, 212);
+	color: black;
 	font-size: 18px;
 	border: none;
 	border-radius: 5px;
@@ -253,22 +296,21 @@ onUnmounted(() => {
 
 .restart-button:hover,
 .start-button:hover {
-	background-color: rgb(84, 103, 198);
+	background-color: white;
 }
 
 .score {
 	position: absolute;
-	top: 10px;
+	bottom: 5%;
 	left: 50%;
 	transform: translateX(-50%);
-	font-size: 24px;
-	font-weight: bold;
+	font-size: 1.2rem;
 	color: white;
 }
 
 h1 {
 	position: absolute;
-	top: 15%;
+	top: 10%;
 	left: 50%;
 	transform: translateX(-50%);
 	color: white;
