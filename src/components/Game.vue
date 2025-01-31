@@ -226,9 +226,9 @@ onUnmounted(() => {
 
 <style scoped>
 .game-container {
-	width: 98vw;
+	width: 98dvw;
 	height: 400px;
-	background-image: url("./src/assets/images/bg.png");
+	background-image: url(/src/assets/images/bg.png);
 	background-size: auto 100%; /* Låser höjden men låter bredden flöda */
 	background-repeat: repeat-x;
 	position: relative;
@@ -306,7 +306,7 @@ onUnmounted(() => {
 
 .score {
 	position: absolute;
-	bottom: 5%;
+	top: 5%;
 	left: 50%;
 	transform: translateX(-50%);
 	font-size: 1.2rem;
