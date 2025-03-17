@@ -25,6 +25,40 @@ const gameContainer = ref<HTMLElement | null>(null); // ref to hold the DOM elem
 let backgroundX = 0;
 const backgroundSpeed = 2; // Pixlar per frame
 
+
+// ----- AUDIO -----
+
+const music = new Audio("./sounds/music.wav");
+const clickSounds = [new Audio("sounds/click_1.wav"), new Audio("sounds/click_2.wav"), new Audio("sounds/click_3.wav"), new Audio("sounds/click_4.wav"), new Audio("sounds/click_5.wav")];
+const jumpSounds = [new Audio("sounds/jump_1.wav"), new Audio("sounds/jump_2.wav")];
+
+// Wrapper function to play sound respecting the mute state
+function playSound(sound: HTMLAudioElement) {
+	sound.play();
+}
+
+function startMusic() {
+	music.loop = true; 
+	playSound(music);
+}
+
+function playRandomClickSound() {
+	const randomIndex = Math.floor(Math.random() * clickSounds.length);
+	const sound = clickSounds[randomIndex];
+	sound.currentTime = 0;
+	sound.play();
+}
+
+function playRandomJumpSound() {
+	const randomIndex = Math.floor(Math.random() * jumpSounds.length);
+	const sound = jumpSounds[randomIndex];
+	sound.currentTime = 0;
+	sound.play();
+}
+
+//----
+
+
 const moveBackground = () => {
 	if (!gameRunning.value || !gameContainer.value) return; // Kolla att elementet finns
 
@@ -137,6 +171,8 @@ const gameLoop = (timestamp: number) => {
 
 // Start game logic
 const startGame = (): void => {
+  playRandomClickSound();
+  startMusic();
 	backgroundX = 0; // Återställ position
 	requestAnimationFrame(moveBackground);
 
@@ -175,6 +211,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 const jump = () => {
 	if (gameOver.value || isJumping.value) return; // Prevent jumping if game is over
 	isJumping.value = true;
+  playRandomJumpSound();
 
 	let jumpInterval = setInterval(() => {
 		if (position.value < jumpHeight) {
