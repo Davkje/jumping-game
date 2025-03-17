@@ -139,7 +139,13 @@ const gameLoop = (timestamp: number) => {
 const startGame = (): void => {
 	backgroundX = 0; // Återställ position
 	requestAnimationFrame(moveBackground);
-	obstacles.value = []; // Clear obstacles
+
+	// Rensa hinder innan spelet startar igen
+	obstacles.value = [];
+	setTimeout(() => {
+		obstacles.value = [];
+	}, 0);
+
 	gameOver.value = false;
 	gameStart.value = false;
 	score.value = 0; // Reset score
@@ -234,6 +240,7 @@ onUnmounted(() => {
 	position: relative;
 	overflow: hidden;
 	border-radius: 10px;
+	border-bottom: solid black 2px;
 }
 
 .dino {
@@ -248,6 +255,7 @@ onUnmounted(() => {
 	left: calc(50% - 34px); /* 50% av skärmen minus halva bredden (68px / 2) */
 	border-radius: 5px;
 	transition: transform 0.5s ease-out;
+	z-index: 10;
 }
 
 .dino.jumping {
