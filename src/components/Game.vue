@@ -29,8 +29,11 @@ const backgroundSpeed = 2; // Pixlar per frame
 // ----- AUDIO -----
 
 const music = new Audio("./sounds/music.wav");
-const clickSounds = [new Audio("sounds/click_1.wav"), new Audio("sounds/click_2.wav"), new Audio("sounds/click_3.wav"), new Audio("sounds/click_4.wav"), new Audio("sounds/click_5.wav")];
-const jumpSounds = [new Audio("sounds/jump_1.wav"), new Audio("sounds/jump_2.wav")];
+music.volume = 0.8;
+const deathSound = new Audio("./sounds/death_sound.wav");
+deathSound.volume = 0.6;
+const clickSounds = [new Audio("sounds/clicks/click_1.wav"), new Audio("sounds/clicks/click_2.wav"), new Audio("sounds/clicks/click_3.wav"), new Audio("sounds/clicks/click_4.wav"), new Audio("sounds/clicks/click_5.wav")];
+const jumpSounds = [new Audio("sounds/jump_2.wav"), new Audio("sounds/jump_1.wav")];
 
 // Wrapper function to play sound respecting the mute state
 function playSound(sound: HTMLAudioElement) {
@@ -57,7 +60,6 @@ function playRandomJumpSound() {
 }
 
 //----
-
 
 const moveBackground = () => {
 	if (!gameRunning.value || !gameContainer.value) return; // Kolla att elementet finns
@@ -157,6 +159,7 @@ const gameLoop = (timestamp: number) => {
 		gameRunning.value = false;
 		obstacleGenerationActive = false; // Reset flag for obstacle generation
 		console.log(`gameOver: ${gameOver.value}`);
+    playSound(deathSound)
 		return; // Stop the game loop if the game is over
 	}
 
