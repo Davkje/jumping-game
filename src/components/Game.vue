@@ -25,15 +25,43 @@ const gameContainer = ref<HTMLElement | null>(null); // ref to hold the DOM elem
 let backgroundX = 0;
 const backgroundSpeed = 2; // Pixlar per frame
 
-
 // ----- AUDIO -----
 
 const music = new Audio("./sounds/music.wav");
-music.volume = 0.8;
-const deathSound = new Audio("./sounds/death_sound.wav");
-deathSound.volume = 0.6;
-const clickSounds = [new Audio("sounds/clicks/click_1.wav"), new Audio("sounds/clicks/click_2.wav"), new Audio("sounds/clicks/click_3.wav"), new Audio("sounds/clicks/click_4.wav"), new Audio("sounds/clicks/click_5.wav")];
+music.volume = 0.6;
+const deathSound = new Audio("./sounds/marimba/marimba_death.wav");
+deathSound.volume = 0.3;
+const clickSounds = [
+	new Audio("sounds/clicks/click_1.wav"),
+	new Audio("sounds/clicks/click_2.wav"),
+	new Audio("sounds/clicks/click_3.wav"),
+	new Audio("sounds/clicks/click_4.wav"),
+	new Audio("sounds/clicks/click_5.wav"),
+];
 const jumpSounds = [new Audio("sounds/jump_2.wav"), new Audio("sounds/jump_1.wav")];
+
+const landSounds = [
+	new Audio("sounds/lands/land_1.wav"),
+	new Audio("sounds/lands/land_2.wav"),
+	new Audio("sounds/lands/land_3.wav"),
+	new Audio("sounds/lands/land_4.wav"),
+	new Audio("sounds/lands/land_5.wav"),
+	new Audio("sounds/lands/land_6.wav"),
+	new Audio("sounds/lands/land_7.wav"),
+	new Audio("sounds/lands/land_8.wav"),
+];
+
+const marimbaSounds = [
+	new Audio("sounds/marimba/jump_marimba_1.wav"),
+	new Audio("sounds/marimba/jump_marimba_2.wav"),
+	new Audio("sounds/marimba/jump_marimba_3.wav"),
+	new Audio("sounds/marimba/jump_marimba_4.wav"),
+	new Audio("sounds/marimba/jump_marimba_5.wav"),
+	new Audio("sounds/marimba/jump_marimba_6.wav"),
+	new Audio("sounds/marimba/jump_marimba_7.wav"),
+	new Audio("sounds/marimba/jump_marimba_8.wav"),
+];
+
 
 // Wrapper function to play sound respecting the mute state
 function playSound(sound: HTMLAudioElement) {
@@ -41,7 +69,7 @@ function playSound(sound: HTMLAudioElement) {
 }
 
 function startMusic() {
-	music.loop = true; 
+	music.loop = true;
 	playSound(music);
 }
 
@@ -52,11 +80,22 @@ function playRandomClickSound() {
 	sound.play();
 }
 
-function playRandomJumpSound() {
-	const randomIndex = Math.floor(Math.random() * jumpSounds.length);
-	const sound = jumpSounds[randomIndex];
+function playRandomLandSound() {
+	const randomIndex = Math.floor(Math.random() * landSounds.length);
+	const sound = landSounds[randomIndex];
 	sound.currentTime = 0;
 	sound.play();
+}
+
+function playRandomJumpSound() {
+	const randomIndex = Math.floor(Math.random() * jumpSounds.length);
+	const jumpSound = jumpSounds[randomIndex];
+	jumpSound.currentTime = 0;
+	jumpSound.play();
+  const randomIndex2 = Math.floor(Math.random() * marimbaSounds.length);
+	const marimbaSound = marimbaSounds[randomIndex2];
+	marimbaSound.currentTime = 0;
+	marimbaSound.play();
 }
 
 //----
@@ -159,7 +198,7 @@ const gameLoop = (timestamp: number) => {
 		gameRunning.value = false;
 		obstacleGenerationActive = false; // Reset flag for obstacle generation
 		console.log(`gameOver: ${gameOver.value}`);
-    playSound(deathSound)
+		playSound(deathSound);
 		return; // Stop the game loop if the game is over
 	}
 
@@ -174,8 +213,8 @@ const gameLoop = (timestamp: number) => {
 
 // Start game logic
 const startGame = (): void => {
-  playRandomClickSound();
-  startMusic();
+	playRandomClickSound();
+	startMusic();
 	backgroundX = 0; // Återställ position
 	requestAnimationFrame(moveBackground);
 
@@ -214,7 +253,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 const jump = () => {
 	if (gameOver.value || isJumping.value) return; // Prevent jumping if game is over
 	isJumping.value = true;
-  playRandomJumpSound();
+	playRandomJumpSound();
 
 	let jumpInterval = setInterval(() => {
 		if (position.value < jumpHeight) {
@@ -230,10 +269,12 @@ const jump = () => {
 				} else {
 					clearInterval(fallInterval);
 					isJumping.value = false;
+					playRandomLandSound();
 				}
 			}, 20);
 		}
 	}, 20);
+	playRandomLandSound();
 };
 
 const handleTouch = () => {
@@ -256,8 +297,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<h1 v-if="gameStart">Welcome</h1>
+	<h1 v-if="gameStart">Welcome!</h1>
+  <h3 v-if="gameStart">Lets play the Dino Game!</h3>
 	<h1 v-if="gameOver && !gameStart">Game Over</h1>
+  <h3 v-if="gameOver && !gameStart">You got {{score}} points!</h3>
+
+  <!-- Messages -->
+  <h3 class="message" v-if="score === 4 && !gameOver">"Great! Keep it up!"</h3>
+  <h3 class="message" v-if="score === 7 && !gameOver">"I'm actually a GIF! Neat huh?"</h3>
+  <h3 class="message" v-if="score === 10 && !gameOver">"10 points! Amazing"</h3>
+  <h3 class="message" v-if="score === 14 && !gameOver">"Everything you hear is recorded by David! Isn't he great?!"</h3>
+  <h3 class="message" v-if="score === 17 && !gameOver">"And he painted everything too! Wow!"</h3>
+  <h3 class="message" v-if="score === 20 && !gameOver">"20!! You're seriously good!!"</h3>
+  <h3 class="message" v-if="score === 30 && !gameOver">"30!!! OMG!!"</h3>
+  <h3 class="message" v-if="score === 100 && !gameOver">"100!!!!! I NEVER THOUGHT ANYONE WOULD GET THIS FAR!!!!!"</h3>
 
 	<div class="game-container" ref="gameContainer">
 		<div class="dino" :class="{ jumping: isJumping, dead: gameOver && !gameStart }" :style="{ bottom: position + 'px' }"></div>
@@ -267,7 +320,7 @@ onUnmounted(() => {
 
 	<button v-if="gameStart" @click="startGame" class="start-button">Play</button>
 	<button v-if="gameOver && !gameStart" @click="startGame" class="restart-button">Play Again</button>
-	<div v-if="!gameStart" class="score">Score: {{ score }}</div>
+	<div v-if="!gameOver && !gameStart" class="score">Score: {{ score }}</div>
 </template>
 
 <style scoped>
@@ -354,7 +407,7 @@ onUnmounted(() => {
 
 .score {
 	position: absolute;
-	top: 5%;
+	bottom: 5%;
 	left: 50%;
 	transform: translateX(-50%);
 	font-size: 1.2rem;
@@ -368,4 +421,24 @@ h1 {
 	transform: translateX(-50%);
 	color: white;
 }
+
+h3 {
+	position: absolute;
+	top: 17%;
+	left: 50%;
+	transform: translateX(-50%);
+	color: white;
+}
+
+.message {
+  border: solid white 2px;
+  top: 7%;
+  font-style: italic;
+  font-size: 1.5rem;
+  border-radius: 1rem;
+  text-align: center;
+  /* background-color: rgba(255, 255, 255, 0.059); */
+  padding: 2rem;
+}
+
 </style>
