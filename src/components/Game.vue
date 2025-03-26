@@ -28,7 +28,7 @@ const backgroundSpeed = 2; // Pixlar per frame
 // ----- AUDIO -----
 
 const music = new Audio("./sounds/music.wav");
-music.volume = 0.6;
+music.volume = 0.4;
 const deathSound = new Audio("./sounds/marimba/marimba_death.wav");
 deathSound.volume = 0.3;
 const clickSounds = [
@@ -88,6 +88,8 @@ function playRandomLandSound() {
 }
 
 function playRandomJumpSound() {
+  if (gameOver.value) return;
+
 	const randomIndex = Math.floor(Math.random() * jumpSounds.length);
 	const jumpSound = jumpSounds[randomIndex];
 	jumpSound.currentTime = 0;
@@ -297,20 +299,25 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<h1 v-if="gameStart">Welcome!</h1>
-  <h3 v-if="gameStart">Lets play the Dino Game!</h3>
+	<h1 v-if="gameStart">Davids Dino Game</h1>
+  <h3 v-if="gameStart">Get to know me and my project by playing!</h3>
 	<h1 v-if="gameOver && !gameStart">Game Over</h1>
   <h3 v-if="gameOver && !gameStart">You got {{score}} points!</h3>
 
   <!-- Messages -->
-  <h3 class="message" v-if="score === 4 && !gameOver">"Great! Keep it up!"</h3>
-  <h3 class="message" v-if="score === 7 && !gameOver">"I'm actually a GIF! Neat huh?"</h3>
-  <h3 class="message" v-if="score === 10 && !gameOver">"10 points! Amazing"</h3>
-  <h3 class="message" v-if="score === 14 && !gameOver">"Everything you hear is recorded by David! Isn't he great?!"</h3>
-  <h3 class="message" v-if="score === 17 && !gameOver">"And he painted everything too! Wow!"</h3>
-  <h3 class="message" v-if="score === 20 && !gameOver">"20!! You're seriously good!!"</h3>
-  <h3 class="message" v-if="score === 30 && !gameOver">"30!!! OMG!!"</h3>
-  <h3 class="message" v-if="score === 100 && !gameOver">"100!!!!! I NEVER THOUGHT ANYONE WOULD GET THIS FAR!!!!!"</h3>
+  <div class="message" v-if="score === 0 && !gameOver">Jump over the rocks with [SPACE]</div>
+  <div class="message" v-if="score === 1 && !gameOver">Good job! Lets go!</div>
+  <div class="message" v-if="(score === 2 || score === 3) && !gameOver">This game was made with TypeScript and Vue!</div>
+  <div class="message" v-if="(score === 4 || score === 5) && !gameOver">I've made and implemented all the sounds and music!</div>
+  <div class="message" v-if="(score === 6 || score === 7) && !gameOver">Have you noticed the randomized sound effects? No big deal!</div>
+  <div class="message" v-if="(score === 8 || score === 9) && !gameOver">The Dino is just a gif that I made in Procreate! Neat huh?</div>
+  <div class="message" v-if="score === 10 && !gameOver">10 points! Oh You're good!</div>
+  <div class="message" v-if="(score === 11 || score === 12) && !gameOver">Thanks for playing! Now see how far you can get!</div>
+  <div class="message" v-if="score === 20 && !gameOver">20 points! Now you got it!</div>
+  <div class="message" v-if="score === 30 && !gameOver">30 points!! You're crushing it!</div>
+  <div class="message" v-if="score === 40 && !gameOver">40 points!!! OMG!!</div>
+  <div class="message" v-if="score === 50 && !gameOver">50 points!!! Go for 100! COME ON!!!"</div>
+  <div class="message" v-if="score === 100 && !gameOver">100 POINTS!!!!! I NEVER THOUGHT ANYONE WOULD GET THIS FAR!!!!! YOU BEAT THE GAME!!!</div>
 
 	<div class="game-container" ref="gameContainer">
 		<div class="dino" :class="{ jumping: isJumping, dead: gameOver && !gameStart }" :style="{ bottom: position + 'px' }"></div>
@@ -318,7 +325,7 @@ onUnmounted(() => {
 		<div v-for="(obstacle, index) in obstacles" :key="index" class="obstacle" :style="{ left: obstacle.left + 'px', bottom: obstacle.bottom + 'px' }"></div>
 	</div>
 
-	<button v-if="gameStart" @click="startGame" class="start-button">Play</button>
+	<button v-if="gameStart" @click="startGame" class="start-button">Start</button>
 	<button v-if="gameOver && !gameStart" @click="startGame" class="restart-button">Play Again</button>
 	<div v-if="!gameOver && !gameStart" class="score">Score: {{ score }}</div>
 </template>
@@ -374,13 +381,13 @@ onUnmounted(() => {
 
 .start-button {
 	position: absolute;
-	bottom: 10%;
+	bottom: 9%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 10px 20px;
 	background-color: rgb(212, 212, 212);
 	color: black;
-	font-size: 18px;
+	font-size: 1.7rem;
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
@@ -388,13 +395,13 @@ onUnmounted(() => {
 
 .restart-button {
 	position: absolute;
-	bottom: 10%;
+	bottom: 9%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 10px 20px;
 	background-color: rgb(212, 212, 212);
 	color: black;
-	font-size: 18px;
+	font-size: 1.7rem;
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
@@ -407,16 +414,18 @@ onUnmounted(() => {
 
 .score {
 	position: absolute;
-	bottom: 5%;
+	bottom: 12%;
 	left: 50%;
 	transform: translateX(-50%);
-	font-size: 1.2rem;
+	font-size: 1.7rem;
 	color: white;
+  cursor: default;
 }
 
 h1 {
 	position: absolute;
-	top: 10%;
+  font-size: 3rem;
+	top: 6%;
 	left: 50%;
 	transform: translateX(-50%);
 	color: white;
@@ -431,14 +440,25 @@ h3 {
 }
 
 .message {
-  border: solid white 2px;
-  top: 7%;
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: solid rgb(0, 0, 0) 3px;
+  border-radius: 5rem 5rem 5rem 0;
+  color: black;
+  background-color: rgb(243, 243, 243);
+  bottom: 62%;
+  left: 55%;
+  margin: 0;
+  width: clamp(10vw, 500px, 30vw);
+  min-height: 10vh;
   font-style: italic;
-  font-size: 1.5rem;
-  border-radius: 1rem;
+  font-size: 1.7rem;
+  border-radius: 2rem 2rem 2rem 0;
   text-align: center;
-  /* background-color: rgba(255, 255, 255, 0.059); */
-  padding: 2rem;
+  padding: 1.2rem;
+  z-index: 99;
 }
 
 </style>
