@@ -19,7 +19,7 @@ Try it and learn ore about it while playing!
 #### Live Site
 [Try the game!](https://davkje.github.io/jumping-game/)
 
-![Preview](assets/designs/preview.png)
+![Preview](src/assets/images/preview.png)
 
 ## Tech Stack
 
