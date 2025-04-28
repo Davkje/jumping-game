@@ -1,5 +1,5 @@
 
-# Davids Cookies - Javascript Assignment
+# Davids Dino Game
 
 **Author:** David Kjellstrand
 
