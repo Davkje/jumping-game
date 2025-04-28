@@ -471,18 +471,18 @@ h3 {
 
 @media (max-width: 668px) {
   h1 {
-    top: 8%;
+    /* top: 8%; */
   }
 
   h3 {
-    top: 15%;
+    top: 14%;
     z-index: 999;
     font-size: clamp(1rem, 3vw, 1.5rem);
   }
 
     .restart-button,
     .start-button {
-    bottom: 5%;
+    bottom: 4%;
   }
 
   .score {
