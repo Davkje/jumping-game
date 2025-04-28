@@ -381,13 +381,13 @@ onUnmounted(() => {
 
 .start-button {
 	position: absolute;
-	bottom: 9%;
+	bottom: 8%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 10px 20px;
 	background-color: rgb(212, 212, 212);
 	color: black;
-	font-size: 1.7rem;
+	font-size: clamp(1.2rem, 2vw, 1.7rem);
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
@@ -395,13 +395,13 @@ onUnmounted(() => {
 
 .restart-button {
 	position: absolute;
-	bottom: 9%;
+	bottom: 8%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 10px 20px;
 	background-color: rgb(212, 212, 212);
 	color: black;
-	font-size: 1.7rem;
+	font-size: clamp(1.2rem, 2vw, 1.7rem);
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
@@ -417,14 +417,17 @@ onUnmounted(() => {
 	bottom: 12%;
 	left: 50%;
 	transform: translateX(-50%);
-	font-size: 1.7rem;
+	font-size: clamp(1.2rem, 3vw, 1.7rem);
 	color: white;
   cursor: default;
 }
 
 h1 {
 	position: absolute;
-  font-size: 3rem;
+  font-size: clamp(2rem, 7vw, 3rem);
+  width: 100%;
+  margin: 0;
+  text-align: center;
 	top: 6%;
 	left: 50%;
 	transform: translateX(-50%);
@@ -433,10 +436,15 @@ h1 {
 
 h3 {
 	position: absolute;
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
 	top: 17%;
 	left: 50%;
+  margin: 0;
+  width: 100%;
+  text-align: center;
 	transform: translateX(-50%);
 	color: white;
+  z-index: 999;
 }
 
 .message {
@@ -454,11 +462,32 @@ h3 {
   width: clamp(10vw, 500px, 30vw);
   min-height: 10vh;
   font-style: italic;
-  font-size: 1.7rem;
+  font-size: clamp(1rem, 3vw, 1.7rem);
   border-radius: 2rem 2rem 2rem 0;
   text-align: center;
   padding: 1.2rem;
   z-index: 99;
+}
+
+@media (max-width: 668px) {
+  h1 {
+    top: 8%;
+  }
+
+  h3 {
+    top: 15%;
+    z-index: 999;
+    font-size: clamp(1rem, 3vw, 1.5rem);
+  }
+
+    .restart-button,
+    .start-button {
+    bottom: 5%;
+  }
+
+  .score {
+    bottom: 8%;
+  }
 }
 
 </style>
