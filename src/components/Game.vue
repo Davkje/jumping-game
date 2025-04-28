@@ -471,11 +471,11 @@ h3 {
 
 @media (max-width: 668px) {
   h1 {
-    /* top: 8%; */
+    top: 5%;
   }
 
   h3 {
-    top: 14%;
+    top: 12%;
     z-index: 999;
     font-size: clamp(1rem, 3vw, 1.5rem);
   }
@@ -488,6 +488,11 @@ h3 {
   .score {
     bottom: 8%;
   }
+
+  .message {
+    bottom: 66%;
+  }
+
 }
 
 </style>
